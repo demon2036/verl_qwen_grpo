@@ -1,0 +1,53 @@
+# FSDP Optimizer 配置（注释：文件用途）
+# 说明：本文件仅添加中文注释，不改变字段含义（注释：不改行为）
+
+# Target class for this configuration（注释：Hydra 目标类）
+_target_: verl.workers.config.FSDPOptimizerConfig  # 配置对象类路径（注释：实例化目标）
+
+# Optimizer class name (e.g., "AdamW", "AdamW8bit", "_AdamW", "Adam")（注释：优化器名称）
+optimizer: AdamW  # 优化器类型（注释：默认 AdamW）
+
+# Module path to import optimizer（注释：优化器实现模块）
+# Examples: "torch.optim", "torchao.optim", "bitsandbytes.optim"（注释：示例说明）
+optimizer_impl: torch.optim  # 优化器实现来源（注释：torch 原生）
+
+# Learning rate（注释：学习率）
+lr: 1e-3  # 初始学习率（注释：基础 lr）
+
+# LR warmup steps ratio（注释：warmup 比例）
+lr_warmup_steps_ratio: 0.0  # 热身步数比例（注释：0 表示关闭）
+
+# Total training steps（注释：总训练步数）
+total_training_steps: -1  # -1 表示由外部推断（注释：占位默认）
+
+# Weight decay（注释：权重衰减）
+weight_decay: 0.01  # L2 正则强度（注释：防过拟合）
+
+# LR warmup steps（注释：warmup 绝对步数）
+lr_warmup_steps: -1  # -1 表示与 ratio 互斥或由外部指定（注释：占位默认）
+
+# Betas for Adam optimizer（注释：Adam 动量系数）
+betas: [0.9, 0.999]  # β1, β2（注释：优化器超参）
+
+# Clip gradient（注释：梯度裁剪）
+clip_grad: 1.0  # 梯度裁剪阈值（注释：稳定训练）
+
+# Minimum LR ratio for cosine schedule（注释：cosine 最小比例）
+min_lr_ratio: 0.0  # 最小学习率比例（注释：防止过小）
+
+# Number of cosine cycles in LR schedule（注释：cosine 循环次数）
+num_cycles: 0.5  # cosine 周期数（注释：半周期）
+
+# LR scheduler type: "constant" or "cosine"（注释：调度器类型）
+lr_scheduler_type: constant  # 调度器类型（注释：常数 or cosine）
+
+# deprecated（注释：已弃用字段）
+warmup_style: null  # 保留兼容（注释：无效字段）
+
+# Additional optimizer-specific keyword arguments（注释：优化器额外参数）
+# Example for torchao with bf16 stochastic rounding:（注释：示例说明）
+# optimizer_impl: torchao.optim（注释：示例模块）
+# optimizer: _AdamW（注释：示例优化器）
+# override_optimizer_config:（注释：示例配置）
+#   bf16_stochastic_round: true（注释：示例字段）
+override_optimizer_config: null  # 额外优化器参数（注释：可选扩展）

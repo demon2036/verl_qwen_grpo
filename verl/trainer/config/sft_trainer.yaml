@@ -1,0 +1,98 @@
+# SFT 训练主配置（Hydra），用于 FSDP SFT Trainer（注释：文件用途）
+# 约定：本文件仅添加中文注释，不改变字段语义与默认值（注释：不改行为）
+
+defaults:  # Hydra 默认配置链入口（注释：声明 defaults）
+  - optim: fsdp  # 引用 optim/fsdp.yaml（注释：优化器配置）
+  - _self_  # 先加载本文件，再覆盖（注释：Hydra 规则）
+
+data:  # 数据相关配置（注释：数据块）
+  train_batch_size: 256  # 全局 batch 大小（注释：全局训练 batch）
+  micro_batch_size: null  # 已弃用字段，保留兼容（注释：历史字段）
+  micro_batch_size_per_gpu: 4  # 每卡 micro-batch，验证也使用（注释：单卡 batch）
+  train_files: ~/data/gsm8k/train.parquet  # 训练集 parquet 路径（注释：训练数据）
+  val_files: ~/data/gsm8k/test.parquet  # 验证集 parquet 路径（注释：验证数据）
+  train_max_samples: -1  # -1 表示使用全部训练数据（注释：采样上限）
+  val_max_samples: -1  # -1 表示使用全部验证数据（注释：采样上限）
+  # Single-turn settings（注释：单轮 SFT 相关字段）
+  prompt_key: question  # 单轮 prompt 字段名（注释：输入字段）
+  response_key: answer  # 单轮 response 字段名（注释：输出字段）
+  prompt_dict_keys: null  # 若 prompt 是 dict，指定取值键（注释：字典字段）
+  response_dict_keys: null  # 若 response 是 dict，指定取值键（注释：字典字段）
+  # Multi-turn settings（注释：多轮 SFT 配置）
+  multiturn:  # 多轮数据子配置（注释：多轮块）
+    enable: false  # true 表示启用多轮数据集（注释：开关）
+    messages_key: messages  # 多轮 messages 字段名（注释：消息列表键）
+    tools_key: tools  # 多轮 tools 字段名（注释：工具列表键）
+    enable_thinking_key: enable_thinking  # 是否包含 thinking 字段（注释：思考标签开关）
+  max_length: 1024  # 最大序列长度（注释：截断长度）
+  truncation: error  # 截断策略（注释：超长处理）
+  balance_dp_token: False  # 是否做 token 级别 DP 平衡（注释：负载均衡）
+  chat_template: null  # 额外 chat_template（注释：模板覆盖）
+  custom_cls:  # 自定义数据集类（注释：自定义数据）
+    path: null  # 类路径（Python 导入路径）（注释：自定义类路径）
+    name: null  # 类名（注释：自定义类名）
+  use_shm: False  # 是否使用共享内存（注释：数据加载优化）
+  apply_chat_template_kwargs: {}  # 传给 tokenizer.chat_template 的 kwargs（注释：模板参数）
+
+model:  # 模型相关配置（注释：模型块）
+  partial_pretrain: ~/models/gemma-1.1-7b-it  # 预训练权重路径或 HF Hub 名（注释：模型权重）
+  use_shm: False  # 权重是否使用共享内存加载（注释：共享内存）
+  fsdp_config:  # FSDP 相关配置（注释：FSDP 块）
+    model_dtype: fp32  # 模型权重 dtype（注释：精度设置）
+    wrap_policy:  # FSDP 包裹策略（注释：自动 wrap）
+      min_num_params: 0  # 最小参数量阈值（注释：wrap 阈值）
+    cpu_offload: False  # 是否开启 CPU offload（注释：显存换内存）
+    offload_params: False  # 是否 offload 参数（注释：参数迁移）
+  external_lib: null  # 需要注入的外部库（注释：自定义模型依赖）
+  enable_gradient_checkpointing: True  # 是否开启梯度检查点（注释：节省显存）
+  trust_remote_code: False  # 是否信任远程代码（注释：安全开关）
+  lora_rank: 0  # LoRA rank，>0 启用 LoRA（注释：PEFT 开关）
+  lora_alpha: 16  # LoRA 缩放系数（注释：PEFT 超参）
+  target_modules: all-linear  # LoRA 目标模块（注释：PEFT 覆盖）
+  use_liger: False  # 是否启用 Liger Kernel（注释：算子加速）
+  strategy: fsdp2  # FSDP 策略选择（注释：fsdp 或 fsdp2）
+
+optim:  # 优化器与学习率相关配置（注释：优化器块）
+  lr: 1e-5  # 学习率（注释：主 lr）
+  betas: [0.9, 0.95]  # Adam betas（注释：动量系数）
+  weight_decay: 0.01  # 权重衰减（注释：正则项）
+  lr_warmup_steps_ratio: 0.1  # warmup 比例（注释：热身）
+  clip_grad: 1.0  # 梯度裁剪阈值（注释：稳定训练）
+  lr_scheduler: cosine  # 学习率调度类型（注释：调度器）
+
+ulysses_sequence_parallel_size: 1  # Ulysses 序列并行大小（注释：SP 规模）
+use_remove_padding: False  # 是否启用移除 padding（注释：变长序列优化）
+
+trainer:  # Trainer 运行相关配置（注释：训练控制）
+  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}  # 默认本地保存目录（注释：输出路径）
+  default_hdfs_dir: null  # HDFS 保存目录（注释：远端保存）
+  project_name: gsm8k-sft  # 项目名（注释：日志项目）
+  experiment_name: test  # 实验名（注释：日志实验）
+  total_epochs: 4  # 训练轮数（注释：epoch 数）
+  total_training_steps: null  # 总训练步数（注释：步数覆盖）
+  logger: [ 'console', 'wandb' ]  # 日志后端（注释：日志输出）
+  seed: 1  # 随机种子（注释：可复现）
+  save_freq: -1  # 保存频率（注释：-1 表示不按步保存）
+  test_freq: -1  # 验证频率（注释：-1 表示不按步验证）
+  nnodes: 1  # 节点数（注释：分布式配置）
+  n_gpus_per_node: 8  # 每节点 GPU 数（注释：分布式配置）
+  max_ckpt_to_keep: null  # 最大保留 ckpt 数（注释：清理策略）
+
+  # Resume mode: "auto", "disable", or "resume_path"（注释：断点续训模式说明）
+  # "auto": resume from last checkpoint if available（注释：自动找最新）
+  # "disable": start from scratch（注释：从头训练）
+  # "resume_path": resume from a user-defined path（注释：指定路径）
+  resume_mode: auto  # 断点续训模式（注释：resume 开关）
+
+  # Path to resume training from (used when resume_mode is "resume_path" or "auto")（注释：resume 路径说明）
+  resume_from_path: null  # 指定续训路径（注释：resume 路径）
+
+  # Checkpoint configuration（注释：checkpoint 子配置）
+  checkpoint:  # checkpoint 块（注释：保存内容）
+    # What to include in saved checkpoints（注释：保存内容说明）
+    # with 'hf_model' you can save whole model as hf format, now only use sharded model checkpoint to save space（注释：保存格式说明）
+    save_contents: ["model", "optimizer", "extra"]  # 保存内容列表（注释：保存项）
+
+    # For more flexibility, you can specify the contents to load from the checkpoint.（注释：加载内容说明）
+    load_contents: ${trainer.checkpoint.save_contents}  # 加载内容列表（注释：默认与保存一致）
+  device: cuda  # 设备类型（注释：cuda/npu/cpu）

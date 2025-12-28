@@ -1,0 +1,154 @@
+# Format checks enforced on CI:（注释：说明该文件格式约束）
+# 1. Comments must appear above each field.（注释：每个字段上方必须有注释）
+# 2. There must be a blank line between each field.（注释：字段之间必须空一行）
+# 3. Inline comments (after a field on the same line) are not allowed.（注释：禁止行内注释）
+# 4. Indentation level is respected for nested fields.（注释：嵌套缩进必须保持）
+
+# <folder_name>@<field_name>.<field_name>: <yaml_file_name>（注释：Hydra defaults 约定说明）
+
+# Hydra 默认配置链入口（注释：defaults 字段说明）
+defaults:
+
+  # 模型配置来自 hf_model.yaml（注释：model 组）
+  - model@model: hf_model
+
+  # 引擎配置来自 engine/fsdp.yaml（注释：engine 组）
+  - engine@engine: fsdp
+
+  # 优化器配置来自 optim/fsdp.yaml（注释：optim 组）
+  - optim@optim: fsdp
+
+  # 加载当前文件（注释：_self_ 规则）
+  - _self_
+
+# 数据相关配置（注释：data 块说明）
+data:
+
+  # 全局 batch 大小（注释：global batch）
+  train_batch_size: 256
+
+  # 每卡 micro-batch（注释：micro batch）
+  micro_batch_size_per_gpu: 4
+
+  # 每卡最大 token 数（注释：动态 batch 约束）
+  max_token_len_per_gpu: 8192
+
+  # 是否启用动态 batch（注释：动态 bsz 开关）
+  use_dynamic_bsz: True
+
+  # 训练集 parquet 路径（注释：训练数据输入）
+  train_files: ~/data/gsm8k/train.parquet
+
+  # 验证集 parquet 路径（注释：验证数据输入）
+  val_files: null
+
+  # 训练集最大采样数（注释：-1 表示全量）
+  train_max_samples: -1
+
+  # 验证集最大采样数（注释：-1 表示全量）
+  val_max_samples: -1
+
+  # Multi-turn settings（注释：多轮字段相关）
+  # messages 字段名（注释：多轮消息列表键）
+  messages_key: messages
+
+  # tools 字段名（注释：多轮工具列表键）
+  tools_key: tools
+
+  # thinking 字段名（注释：多轮思考标签键）
+  enable_thinking_key: enable_thinking
+
+  # padding 方式（注释：no_padding/left/right）
+  pad_mode: no_padding
+
+  # 右侧 padding 的最大长度（注释：序列最大长度）
+  max_length: 1024
+
+  # 截断策略（注释：超长处理）
+  truncation: error
+
+  # 是否平衡 DP token（注释：尚未实现）
+  balance_dp_token: False
+
+  # 自定义数据集类配置（注释：custom_cls 块）
+  custom_cls:
+
+    # 自定义类路径（注释：Python 导入路径）
+    path: null
+
+    # 自定义类名（注释：类名）
+    name: null
+
+  # 是否使用共享内存（注释：数据加载优化）
+  use_shm: False
+
+  # 传给 apply_chat_template 的 kwargs（注释：模板参数）
+  apply_chat_template_kwargs: {}
+
+  # MultiTurnSFTDataset apply_chat_template to each turn separately and concat `input_ids` as a whole sequence（注释：多轮拼接说明）
+  # For example, Qwen Thinking series models add <think></think> tags to last turn（注释：Qwen Thinking 额外标签说明）
+  # Set to True to ignore input_ids mismatch and use the concatenated input_ids as the final input_ids.（注释：是否忽略 mismatch）
+  ignore_input_ids_mismatch: False
+
+# Checkpoint configuration（注释：checkpoint 块说明）
+checkpoint:
+
+  # Hydra 目标类（注释：CheckpointConfig 类）
+  _target_: verl.trainer.config.CheckpointConfig
+
+  # 保存内容列表（注释：保存哪些状态）
+  save_contents: ["model", "optimizer", "extra"]
+
+  # 加载内容列表（注释：默认与保存一致）
+  load_contents: ${checkpoint.save_contents}
+
+# Trainer 运行配置（注释：trainer 块说明）
+trainer:
+
+  # 本地默认保存目录（注释：checkpoint 输出）
+  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
+
+  # HDFS 保存目录（注释：远端保存）
+  default_hdfs_dir: null
+
+  # 项目名（注释：日志项目）
+  project_name: gsm8k-sft
+
+  # 实验名（注释：日志实验）
+  experiment_name: test
+
+  # 训练轮数（注释：epoch 数）
+  total_epochs: 4
+
+  # 总训练步数（注释：可覆盖 total_epochs * steps）
+  total_training_steps: null
+
+  # 日志后端（注释：console/wandb 等）
+  logger: [ 'console', 'wandb' ]
+
+  # 随机种子（注释：复现）
+  seed: 1
+
+  # 保存频率（注释：-1 表示关闭）
+  save_freq: -1
+
+  # 验证频率（注释：-1 表示关闭）
+  test_freq: -1
+
+  # 最大保留 ckpt 数（注释：清理策略）
+  max_ckpt_to_keep: null
+
+  # Resume mode: "auto", "disable", or "resume_path"（注释：resume 模式）
+  resume_mode: auto
+
+  # Path to resume training from（注释：指定 resume 路径）
+  resume_from_path: null
+
+  # 设备类型（注释：cuda/npu/cpu）
+  device: cuda
+
+  # 节点数（注释：分布式配置）
+  nnodes: 1
+
+  # 每节点 GPU 数（注释：分布式配置）
+  n_gpus_per_node: 1
